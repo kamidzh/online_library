@@ -5,6 +5,7 @@ from pathvalidate import sanitize_filename
 import pathlib
 from urllib.parse import urljoin, urlsplit, unquote
 import argparse
+from time import sleep
 
 
 def check_for_redirect(response):
@@ -28,7 +29,7 @@ def download_image(url, filename, folder='images/'):
         file.write(response.content)
 
 
-def parse_book_page(soup):
+def parse_book_page(soup, url):
     book_name = soup.find('div', id='content').find('h1').text.split('::')
     title = book_name[0].strip()
     author = book_name[1].strip()
@@ -37,36 +38,38 @@ def parse_book_page(soup):
     comments = soup.find_all('div', class_="texts")
     comments_text = [comment.find('span', class_="black").text for comment in comments]
     image = soup.find('div', class_='bookimage').find('img')['src']
-    image_url = urljoin('http://tululu.org/', image)
-    book_data = {'author' : author,
+    image_url = urljoin(url, image)
+    book_parameters = {'author' : author,
                  'title' : title,
                  'genres' : genres,
                  'comments' : comments_text,
                  'image_url' : image_url}
-    return book_data
+    return book_parameters
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Описание что делает программа'
+        description='Проект создан для скачивания книг с сайта tululu.org'
     )
-    parser.add_argument('--start_id', help='start_id', default=1, type=int)
-    parser.add_argument('--end_id', help='end_id', default=10, type=int)
+    parser.add_argument('--start_page', help='start_page', default=1, type=int)
+    parser.add_argument('--end_page', help='end_page', default=10, type=int)
     args = parser.parse_args()
-    for id in range(args.start_id, args.end_id):
+    for page in range(args.start_page, args.end_page):
         try:
-            download_url = f"https://tululu.org/txt.php?id={id}"
-            download_response = requests.get(download_url)
+            payload = {'id' : page}
+            download_url = 'https://tululu.org/txt.php'
+            download_response = requests.get(download_url, params=payload)
             download_response.raise_for_status()
             check_for_redirect(download_response)
-            book_page_url = f'https://tululu.org/b{id}'
+            book_page_url = f'https://tululu.org/b{page}'
             page_response = requests.get(book_page_url)
             page_response.raise_for_status()
+            check_for_redirect(page_response)
             soup = BeautifulSoup(page_response.text, 'lxml')
-            book_data = parse_book_page(soup)
-            book_title = book_data['title']
+            book_parameters = parse_book_page(soup, book_page_url)
+            book_title = book_parameters['title']
             download_txt(download_response, book_title)
-            image_url = book_data['image_url']
+            image_url = book_parameters['image_url']
             filename = urlsplit(image_url).path.split('/')[-1]
             download_image(image_url, filename)
         except requests.exceptions.HTTPError:
