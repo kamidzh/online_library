@@ -39,11 +39,13 @@ def parse_book_page(soup, url):
     comments_text = [comment.find('span', class_="black").text for comment in comments]
     image = soup.find('div', class_='bookimage').find('img')['src']
     image_url = urljoin(url, image)
-    book_parameters = {'author' : author,
-                 'title' : title,
-                 'genres' : genres,
-                 'comments' : comments_text,
-                 'image_url' : image_url}
+    book_parameters = {
+        "author": author,
+        "title": title,
+        "genres": genres,
+        "comments": comments_text,
+        "image_url": image_url,
+    }
     return book_parameters
 
 
@@ -81,3 +83,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
